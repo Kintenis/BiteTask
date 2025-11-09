@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Utils\Validators;
 
@@ -14,13 +14,21 @@ class IpValidator extends AbstractValidator
             return null;
         }
 
-        return $this->jsonResponse($response, false, ['IP: ' . $ipAddress . ' is not a valid IP Address.']);
+        return $this->jsonResponse(
+            $response,
+            false,
+            ['IP: ' . $ipAddress . ' is not a valid IP Address.']
+        );
     }
 
     public function checkBlacklist(Response $response, string $ipAddress): ?JsonResponse
     {
         if ($this->entityManager->getRepository(Blacklist::class)->findOneBy(['ip' => $ipAddress])) {
-            return $this->jsonResponse($response, false, ['IP: ' . $ipAddress . ' IS IN THE BLACKLIST.']);
+            return $this->jsonResponse(
+                $response,
+                false,
+                ['IP: ' . $ipAddress . ' IS IN THE BLACKLIST.']
+            );
         }
 
         return null;

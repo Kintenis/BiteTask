@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Utils\Managers;
 
@@ -21,42 +21,35 @@ class IpManager extends AbstractManager
             return $error;
         }
 
-        $cache = new FilesystemAdapter();
         $ipEntity = $this->entityManager->getRepository(Ip::class)->findOneBy(['ip' => $ipAddress]);
 
         if (!$ipEntity) {
-            if ($cache->getItem($ipAddress)->isHit()) {
-                $cache->deleteItem($ipAddress);
-            }
+            $cacheIp = $this->flushWithCache(new Ip(), $ipAddress);
 
-            $cacheIp = $cache->get($ipAddress, function (ItemInterface $item) use ($ipAddress): string {
-                $item->expiresAfter(86400);
-
-                return $this->serializer->serialize($this->flushToDatabase($ipAddress, new Ip()), 'json');
-            });
-
-            return $this->ipValidator->jsonResponse($response, true, [json_decode($cacheIp, true)]);
+            return $this->ipValidator->jsonResponse(
+                $response,
+                true,
+                [json_decode($cacheIp, true)]
+            );
         }
 
-        $now = new DateTimeImmutable('now');
-        $entityUpdatedAt = $ipEntity->getUpdatedAt();
-        $diffInSeconds = $now->getTimestamp() - $entityUpdatedAt->getTimestamp();
+        if ($this->dateDiffInSeconds(new DateTimeImmutable('now'), $ipEntity->getUpdatedAt()) > 86400) {
+            $cacheIp = $this->flushWithCache($ipEntity, $ipAddress);
 
-        if ($diffInSeconds > 86400) {
-            if ($cache->getItem($ipAddress)->isHit()) {
-                $cache->deleteItem($ipAddress);
-            }
-
-            $cacheIp = $cache->get($ipAddress, function (ItemInterface $item) use ($ipAddress, $ipEntity): string {
-                $item->expiresAfter(86400);
-
-                return $this->serializer->serialize($this->flushToDatabase($ipAddress, $ipEntity), 'json');
-            });
-
-            return $this->ipValidator->jsonResponse($response, true, [json_decode($cacheIp, true)]);
+            return $this->ipValidator->jsonResponse(
+                $response,
+                true,
+                [json_decode($cacheIp, true)]
+            );
         }
 
-        return $this->ipValidator->jsonResponse($response, true, [json_decode($cache->getItem($ipAddress)->get(), true)]);
+        $cache = new FilesystemAdapter();
+
+        return $this->ipValidator->jsonResponse(
+            $response,
+            true,
+            [json_decode($cache->getItem($ipAddress)->get(), true)]
+        );
     }
 
     public function deleteSingle(Response $response, string $ipAddress): JsonResponse
@@ -65,30 +58,67 @@ class IpManager extends AbstractManager
             return $error;
         }
 
-        if ($this->deleteOneByIp('Ip', $ipAddress)) {
-            return $this->ipValidator->jsonResponse($response, true, ['IP ' . $ipAddress . ' was removed from the database successfully.']);
+        if ($this->deleteOneByIp($this->entityManager->getRepository(Ip::class), $ipAddress)) {
+            return $this->ipValidator->jsonResponse(
+                $response,
+                true,
+                ['IP ' . $ipAddress . ' was removed from the database successfully.']
+            );
         }
 
-        return $this->ipValidator->jsonResponse($response, false, ['IP ' . $ipAddress . ' does not exist in the database.']);
+        return $this->ipValidator->jsonResponse(
+            $response,
+            false,
+            ['IP ' . $ipAddress . ' does not exist in the database.']
+        );
     }
 
     public function bulk(Response $response, mixed $requestBody): JsonResponse
     {
+        $ipAddressesString = implode(', ', $requestBody['ipAddresses']);
+
         if ($error = $this->requestInputValidator->checkBulk($response, $requestBody)) {
             return $error;
         }
 
         if ($requestBody['action'] === 'DELETE') {
-            $errors = $this->deleteBulkByIp('Ip', $requestBody['ipAddresses']);
+            $errors = $this->deleteBulkByIp($this->entityManager->getRepository(Ip::class), $requestBody['ipAddresses']);
 
             if (!$errors) {
-                return $this->ipValidator->jsonResponse($response, true, ['IP Addresses were removed from the local database successfully.']);
+                return $this->ipValidator->jsonResponse(
+                    $response,
+                    true,
+                    ['IP Addresses [' . $ipAddressesString . '] were removed from the local database successfully.']
+                );
             }
 
-            return $this->ipValidator->jsonResponse($response, false, ['IP Addresses [' . implode(', ', $errors) . '] do not exist in the local database.']);
+            return $this->ipValidator->jsonResponse(
+                $response,
+                false,
+                ['IP Addresses [' . implode(', ', $errors) . '] do not exist in the local database.']
+            );
         }
 
-        return $this->ipValidator->jsonResponse($response, true, ['TO BE CONTINUED.']);
+        return $this->ipValidator->jsonResponse(
+            $response,
+            true,
+            ['TO BE CONTINUED.']
+        );
+    }
+
+    private function flushWithCache(object $ipEntity, string $ipAddress): string
+    {
+        $cache = new FilesystemAdapter();
+
+        if ($cache->getItem($ipAddress)->isHit()) {
+            $cache->deleteItem($ipAddress);
+        }
+
+        return $cache->get($ipAddress, function (ItemInterface $item) use ($ipAddress, $ipEntity): string {
+            $item->expiresAfter(86400);
+
+            return $this->serializer->serialize($this->flushToDatabase($ipAddress, $ipEntity), 'json');
+        });
     }
 
     private function flushToDatabase(string $ipAddress, object $ipEntity): object

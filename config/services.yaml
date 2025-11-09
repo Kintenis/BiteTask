@@ -5,7 +5,6 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     app.ip_stack_auth_key: '%env(string:IP_STACK_AUTH_KEY)%'
-    app.max_items_per_request: '%env(string:MAX_ITEMS_PER_REQUEST)%'
 
 services:
     # default configuration for services in *this* file

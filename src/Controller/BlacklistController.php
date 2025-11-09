@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Controller;
 
@@ -33,18 +33,12 @@ class BlacklistController extends AbstractController
             new OA\Response(
                 response: 200,
                 description: 'Returns success response.',
-                content: new OA\JsonContent(
-                    type: 'array',
-                    items: new OA\Items(ref: new Model(type: Response::class))
-                )
+                content: new OA\JsonContent(ref: new Model(type: Response::class))
             ),
             new OA\Response(
                 response: 404,
                 description: 'Returns error response.',
-                content: new OA\JsonContent(
-                    type: 'array',
-                    items: new OA\Items(ref: new Model(type: Response::class))
-                )
+                content: new OA\JsonContent(ref: new Model(type: Response::class))
             )
         ]
     )]
@@ -73,18 +67,12 @@ class BlacklistController extends AbstractController
             new OA\Response(
                 response: 200,
                 description: 'Returns success response.',
-                content: new OA\JsonContent(
-                    type: 'array',
-                    items: new OA\Items(ref: new Model(type: Response::class))
-                )
+                content: new OA\JsonContent(ref: new Model(type: Response::class))
             ),
             new OA\Response(
                 response: 404,
                 description: 'Returns error response.',
-                content: new OA\JsonContent(
-                    type: 'array',
-                    items: new OA\Items(ref: new Model(type: Response::class))
-                )
+                content: new OA\JsonContent(ref: new Model(type: Response::class))
             )
         ]
     )]
@@ -113,18 +101,12 @@ class BlacklistController extends AbstractController
             new OA\Response(
                 response: 200,
                 description: 'Returns success response.',
-                content: new OA\JsonContent(
-                    type: 'array',
-                    items: new OA\Items(ref: new Model(type: Response::class))
-                )
+                content: new OA\JsonContent(ref: new Model(type: Response::class))
             ),
             new OA\Response(
                 response: 404,
                 description: 'Returns error response.',
-                content: new OA\JsonContent(
-                    type: 'array',
-                    items: new OA\Items(ref: new Model(type: Response::class))
-                )
+                content: new OA\JsonContent(ref: new Model(type: Response::class))
             )
         ]
     )]
@@ -145,35 +127,30 @@ class BlacklistController extends AbstractController
                 in: 'query',
                 required: true,
                 allowEmptyValue: false,
-                schema: new OA\Schema(
-                    type: 'array',
-                    items: new OA\Items(ref: new Model(type: RequestBulk::class))
-                ),
-                example: '{"action": "ADD", "ipAddresses": ["10.20.30.40", "50.60.70.80", "90.100.110.120"]}'
+                schema: new OA\Schema(ref: new Model(type: RequestBulk::class)),
+                example: '{"action": "ADD", "ipAddresses": ["1.1.1.1", "2.2.2.2", "3.3.3.3"]}',
+                content: new OA\JsonContent(ref: new Model(type: RequestBulk::class))
             )
         ],
         responses: [
             new OA\Response(
                 response: 200,
                 description: 'Returns success response.',
-                content: new OA\JsonContent(
-                    type: 'array',
-                    items: new OA\Items(ref: new Model(type: Response::class))
-                )
+                content: new OA\JsonContent(ref: new Model(type: Response::class))
             ),
             new OA\Response(
                 response: 404,
                 description: 'Returns error response.',
-                content: new OA\JsonContent(
-                    type: 'array',
-                    items: new OA\Items(ref: new Model(type: Response::class))
-                )
+                content: new OA\JsonContent(ref: new Model(type: Response::class))
             )
         ]
     )]
     #[OA\Tag(name: 'blacklist')]
     public function bulk(): JsonResponse
     {
-        return $this->blacklistManager->bulk(new Response(), json_decode($this->requestStack->getCurrentRequest()->get('requestBody'), true));
+        return $this->blacklistManager->bulk(
+            new Response(),
+            json_decode($this->requestStack->getCurrentRequest()->get('requestBody'), true)
+        );
     }
 }

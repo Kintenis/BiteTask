@@ -1,10 +1,11 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Model;
 
 class RequestBulk
 {
     private string $action;
+
     private array $ipAddresses;
 
     public function getAction(): string

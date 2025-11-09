@@ -1,7 +1,8 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Utils\Managers;
 
+use App\Repository\IpRepository;
 use App\Utils\Providers\IpStackProvider;
 use App\Utils\Validators\IpValidator;
 use App\Utils\Validators\RequestInputValidator;
@@ -31,28 +32,24 @@ abstract class AbstractManager
         $this->serializer = $serializer;
     }
 
-    public function getOneByIp(string $entityName, string $ipAddress): ?object
+    public function getOneByIp(object $entityClass, string $ipAddress): ?object
     {
-        if (!in_array($entityName, ['Ip', 'Blacklist'])) {
-            return null;
-        }
-
-        if ($entity = $this->entityManager->getRepository('App\\Entity\\' . $entityName)->findOneBy(['ip' => $ipAddress])) {
+        if ($entity = $entityClass->findOneBy(['ip' => $ipAddress])) {
             return $entity;
         }
 
         return null;
     }
 
-    public function deleteOneByIp(string $entityName, string $ipAddress): bool
+    public function deleteOneByIp(object $entityClass, string $ipAddress): bool
     {
-        if ($entity = $this->getOneByIp($entityName, $ipAddress)) {
+        if ($entity = $this->getOneByIp($entityClass, $ipAddress)) {
             $this->entityManager->remove($entity);
             $this->entityManager->flush();
 
             $cache = new FilesystemAdapter();
 
-            if (($entityName === 'Ip') && $cache->getItem($ipAddress)->isHit()) {
+            if (($entityClass instanceof IpRepository) && $cache->getItem($ipAddress)->isHit()) {
                 $cache->deleteItem($ipAddress);
             }
 
@@ -62,17 +59,17 @@ abstract class AbstractManager
         return false;
     }
 
-    public function deleteBulkByIp(string $entityName, array $ipAddresses): ?array
+    public function deleteBulkByIp(object $entityClass, array $ipAddresses): ?array
     {
         $errors = [];
 
         foreach ($ipAddresses as $ipAddress) {
-            if ($entity = $this->getOneByIp($entityName, $ipAddress)) {
+            if ($entity = $this->getOneByIp($entityClass, $ipAddress)) {
                 $this->entityManager->remove($entity);
 
                 $cache = new FilesystemAdapter();
 
-                if (($entityName === 'Ip') && $cache->getItem($ipAddress)->isHit()) {
+                if (($entityClass instanceof IpRepository) && $cache->getItem($ipAddress)->isHit()) {
                     $cache->deleteItem($ipAddress);
                 }
             } else {
@@ -87,5 +84,18 @@ abstract class AbstractManager
         $this->entityManager->flush();
 
         return null;
+    }
+
+    public function dateDiffInSeconds(\DateTimeImmutable $date1, \DateTimeImmutable $date2): int
+    {
+        if ($date1 >= $date2) {
+            $greaterDate = $date1;
+            $lesserDate = $date2;
+        } else {
+            $greaterDate = $date2;
+            $lesserDate = $date1;
+        }
+
+        return $greaterDate->getTimestamp() - $lesserDate->getTimestamp();
     }
 }
